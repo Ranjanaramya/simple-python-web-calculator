@@ -1,1 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simple Calculator</title>
+  <style>
+  /* Base variables (defaults to light) */
+  :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --accent:#2563eb;
+      --panel:#f3f5f8;
+      --text:#0f1724;
+      --number-color:#0f1724;
+      --op-color: var(--text);
+      --subtext:#6b7280;
+      --danger:#ef4444;
+      --eq-shadow: rgba(37,99,235,0.28);
 
+      /* history-specific defaults (overridden by theme) */
+      --history-timestamp: #6b7280;
+      --history-expression: #475569;
+      --history-result: #2563eb;
+      --history-sep: rgba(75,85,99,0.35);
+  }
+
+  html,body{
+      height:100%;
+      margin:0;
+      font-family:Inter,Segoe UI,Roboto,Arial;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+  }
+
+  body{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(180deg,var(--bg),#e4e7ec);
+      color:var(--text);
+      padding:28px;
+  }
+
+  .card{
+      width:360px;
+      background:var(--card);
+      border-radius:14px;
+      padding:18px;
+      box-shadow:0 10px 30px rgba(2,6,23,0.08);
+      border: 1px solid rgba(0,0,0,0.03);
+  }
+
+  .display{
+      background:var(--panel);
+      border-radius:8px;
+      padding:16px;
+      color:var(--text);
+      font-size:28px;
+      text-align:right;
+      min-height:56px;
+      box-shadow:inset 0 0 8px rgba(0,0,0,0.04);
+  }
+
+  .small{
+      font-size:12px;
+      color:var(--subtext);
+      opacity:0.95;
+  }
+
+  .buttons{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      margin-top:14px;
+  }
+
+  button{
+      background:#ffffff;
+      border:1px solid #e6e9ee;
+      padding:16px;
+      border-radius:10px;
+      color:var(--text);
+      font-size:18px;
+      cursor:pointer;
+      transition:all .12s;
+      box-shadow: 0 2px 8px rgba(16,24,40,0.04);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+  }
+
+  button:hover{
+      transform:translateY(-2px);
+      filter:brightness(0.98);
+  }
+
+  /* Ensure numeric buttons use the variable and remain fully visible */
+  .btn-num {
+    color: var(--number-color) !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: var(--number-color) !important;
+  }
+
+  /* Operator buttons (plus, minus, parentheses, divide, multiply) use a dedicated color variable */
+  .btn-op { color: var(--op-color) !important; }
+
+  .btn-op{
+      background:#fafafa;
+      border:1px solid #eaecef;
+      box-shadow:0 2px 6px rgba(0,0,0,0.03);
+  }
+
+  .btn-eq{
+      background:var(--accent);
+      color:#ffffff;
+      font-weight:700;
+      border:none;
+      box-shadow:0 6px 18px var(--eq-shadow);
+  }
+
+  .btn-eq:hover{
+      filter:brightness(0.95);
+  }
+
+  .btn-clear{
+      background:var(--danger);
+      color:#fff;
+      font-weight:700;
+      border:none;
+      box-shadow:0 6px 14px rgba(0,0,0,0.08);
+  }
+
+  .btn-clear:hover{
+      filter:brightness(0.95);
+  }
+
+  .history{
+      margin-top:12px;
+      background:#f9fafb;
+      padding:10px;
+      border-radius:8px;
+      max-height:120px;
+      overflow:auto;
+      font-size:13px;
+      border:1px solid #e6e7eb;
+  }
+
+  /* History item - default; will use theme variables */
+  .history-item{
+      padding:8px 6px;
+      border-bottom:1px dashed #d1d5db;
+      display:block;
+      color:var(--history-expression); /* fallback */
+  }
+
+  /* parts inside each history item */
+  .history-item .hist-ts {
+    color: var(--history-timestamp) !important;
+    font-size:12px;
+    display:inline-block;
+    margin-right:6px;
+  }
+  .history-item .hist-expr {
+    color: var(--history-expression) !important;
+    font-weight:500;
+  }
+  .history-item .hist-eq,
+  .history-item .hist-sep {
+    color: var(--history-sep) !important;
+    margin: 0 4px;
+  }
+  .history-item .hist-res {
+    color: var(--history-result) !important;
+    font-weight:700;
+    margin-left:4px;
+  }
+
+  .footer{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:10px;
+      color:var(--subtext);
+  }
+
+  .kbd{
+      font-size:12px;
+      color:var(--subtext);
+  }
+
+  /* small responsive fix */
+  @media (max-width:420px){
+    .card{ width:92%; }
+  }
+  </style>
+
+</head>
+<body>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:700;font-size:18px">Simple Calculator</div>
+        <div class="small">Powered by Python + Flask (UI in browser)</div>
+      </div>
+      <div class="small kbd">Keys: 0-9 . + - * / ( ) Enter = Backspace</div>
+    </div>
+
+    <div id="display" class="display" role="textbox" aria-label="Calculator display">0</div>
+
+    <div class="buttons" id="buttons">
+      <button class="btn-op btn-num" data-value="7">7</button>
+      <button class="btn-op btn-num" data-value="8">8</button>
+      <button class="btn-op btn-num" data-value="9">9</button>
+      <button class="btn-clear" id="clear">C</button>
+
+      <button class="btn-op btn-num" data-value="4">4</button>
+      <button class="btn-op btn-num" data-value="5">5</button>
+      <button class="btn-op btn-num" data-value="6">6</button>
+      <button class="btn-op" data-value="*">×</button>
+
+      <button class="btn-op btn-num" data-value="1">1</button>
+      <button class="btn-op btn-num" data-value="2">2</button>
+      <button class="btn-op btn-num" data-value="3">3</button>
+      <button class="btn-op" data-value="-">−</button>
+
+      <button class="btn-op btn-num" data-value="0">0</button>
+      <button class="btn-op" data-value=".">.</button>
+      <button class="btn-op" data-value="(">(</button>
+      <button class="btn-op" data-value=")">)</button>
+
+      <button class="btn-op" data-value="/">÷</button>
+      <button class="btn-op" data-value="+">+</button>
+      <button class="btn-op" id="back" title="Backspace">⌫</button>
+      <button class="btn-op btn-eq" id="equals">=</button>
+    </div>
+
+    <div class="history" id="history">
+      <div class="small">History</div>
+      <div id="history-list"></div>
+    </div>
+
+    <div class="footer">
+      <div class="small">Last saved: <span id="last-saved">—</span></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="small">Server: <span id="server-status">ready</span></div>
+        <button id="theme-toggle" title="Toggle theme" style="padding:6px 10px;border-radius:6px;border:0;background:rgba(0,0,0,0.06);color:var(--text);cursor:pointer">Theme</button>
+        <button id="open-browser" title="Open in browser" style="padding:6px 10px;border-radius:6px;border:0;background:rgba(0,0,0,0.06);color:var(--text);cursor:pointer">Open</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const display = document.getElementById('display');
+      const historyList = document.getElementById('history-list');
+      const lastSaved = document.getElementById('last-saved');
+      const serverStatus = document.getElementById('server-status');
+
+      let expr = '';
+
+      function render(){
+        display.textContent = expr || '0';
+      }
+
+      function isSafe(s){
+        return /^[0-9+\-*/().\s]+$/.test(s);
+      }
+
+      function evaluateAndSave(){
+        const toEval = expr.trim();
+        if(!toEval) return;
+        if(!isSafe(toEval)){
+          display.textContent = 'Error';
+          return;
+        }
+        let result;
+        try{
+          result = Function('return (' + toEval + ')')();
+        }catch(e){
+          display.textContent = 'Error';
+          return;
+        }
+        display.textContent = String(result);
+
+        fetch('/save', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({expression: toEval, result: String(result)})
+        }).then(r => {
+          if(r.ok) return r.json();
+          throw new Error('save-failed');
+        }).then(data => {
+          serverStatus.textContent = 'saved';
+          lastSaved.textContent = data.timestamp || '—';
+          loadHistory();
+        }).catch(err => {
+          serverStatus.textContent = 'error';
+          console.warn('save failed', err);
+        });
+
+        expr = '';
+      }
+
+      // NEW: structured history rendering (timestamp / expression / result)
+      function loadHistory(){
+        fetch('/history').then(r => r.json()).then(data => {
+          historyList.innerHTML = '';
+          (data.history || []).slice().reverse().forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+
+            const ts = document.createElement('span');
+            ts.className = 'hist-ts';
+            ts.textContent = item.timestamp;
+
+            const sep = document.createElement('span');
+            sep.className = 'hist-sep';
+            sep.textContent = ' — ';
+
+            const exprSpan = document.createElement('span');
+            exprSpan.className = 'hist-expr';
+            exprSpan.textContent = item.expression;
+
+            const eq = document.createElement('span');
+            eq.className = 'hist-eq';
+            eq.textContent = ' = ';
+
+            const res = document.createElement('span');
+            res.className = 'hist-res';
+            res.textContent = item.result;
+
+            div.appendChild(ts);
+            div.appendChild(sep);
+            div.appendChild(exprSpan);
+            div.appendChild(eq);
+            div.appendChild(res);
+
+            historyList.appendChild(div);
+          });
+        }).catch(()=>{});
+      }
+
+      document.getElementById('buttons').addEventListener('click', e => {
+        const btn = e.target.closest('button');
+        if(!btn) return;
+        if(btn.id === 'clear'){
+          expr = '';
+          render();
+          return;
+        }
+        if(btn.id === 'back'){
+          expr = expr.slice(0, -1);
+          render();
+          return;
+        }
+        if(btn.id === 'equals'){
+          evaluateAndSave();
+          return;
+        }
+        const v = btn.dataset.value;
+        if(v){
+          expr += v;
+          render();
+        }
+      });
+
+      window.addEventListener('keydown', e => {
+        if(e.key === 'Enter'){
+          evaluateAndSave();
+          e.preventDefault();
+          return;
+        }
+        if(e.key === 'Backspace'){
+          expr = expr.slice(0, -1);
+          render();
+          e.preventDefault();
+          return;
+        }
+        const allowed = '0123456789+-*/(). ';
+        if(allowed.includes(e.key)){
+          expr += e.key;
+          render();
+          e.preventDefault();
+        }
+      });
+
+      loadHistory();
+      render();
+    })();
+    // open-in-browser helper
+    (function(){
+      const btn = document.getElementById('open-browser');
+      if(!btn) return;
+      btn.addEventListener('click', () => {
+        try{
+          const url = (location && location.origin && location.origin !== 'null') ? location.origin : location.href;
+          window.open(url, '_blank');
+        }catch(e){
+          window.open('/', '_blank');
+        }
+      });
+    })();
+  </script>
+
+  <script>
+  // Theme toggle (persisted in localStorage)
+  (function(){
+    const root = document.documentElement;
+    const toggle = document.getElementById('theme-toggle');
+
+    const dark = {
+      '--bg':        '#071229',
+      '--card':      '#0b1220',
+      '--accent':    '#2563eb',
+      '--panel':     '#081426',
+      '--text':      '#e6eef8',
+      '--number-color':'#0f1724',
+      '--op-color':   '#60a5fa',
+      '--subtext':   '#94a8c6',
+      '--danger':    '#ff6b6b',
+      '--eq-shadow': 'rgba(37,99,235,0.28)',
+      /* history colors for dark */
+      '--history-timestamp': '#9fb3d9',
+      '--history-expression': '#cfd9e6',
+      '--history-result': '#60a5fa',
+      '--history-sep': 'rgba(151,170,200,0.25)'
+    };
+
+    const light = {
+      '--bg':        '#f6f8fb',
+      '--card':      '#ffffff',
+      '--accent':    '#2563eb',
+      '--panel':     '#f3f5f8',
+      '--text':      '#0f1724',
+      '--number-color':'#0f1724',
+      '--op-color':   '#0f1724',
+      '--subtext':   '#6b7280',
+      '--danger':    '#ef4444',
+      '--eq-shadow': 'rgba(37,99,235,0.28)',
+      /* history colors for light */
+      '--history-timestamp': '#6b7280',
+      '--history-expression': '#475569',
+      '--history-result': '#2563eb',
+      '--history-sep': 'rgba(75,85,99,0.20)'
+    };
+
+    let mode = localStorage.getItem('calc-theme') || 'dark';
+
+    function applyTheme(themeObject) {
+      Object.entries(themeObject).forEach(([k,v]) => root.style.setProperty(k, v));
+      localStorage.setItem('calc-theme', mode);
+    }
+
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        mode = (mode === 'dark') ? 'light' : 'dark';
+        applyTheme(mode === 'dark' ? dark : light);
+      });
+    }
+
+    // initialize with the saved theme (or default)
+    applyTheme(mode === 'dark' ? dark : light);
+  })();
+</script>
+
+</body>
+</html>
